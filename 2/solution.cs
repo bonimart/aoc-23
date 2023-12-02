@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Linq;
 
 class Program
 {
@@ -19,11 +20,19 @@ class Program
         string[] lines = File.ReadAllLines(filePath);
 
         int sum = 0;
+        int sum_of_powers = 0;
         // Display each line from the array (just for demonstration)
         foreach (string line in lines)
         {
             int gameId = ParseGameId(line);
             bool possible = true;
+            // the minimal possible values that could have been in the bag
+            Dictionary<string, int> minimal_bag = new Dictionary<string, int>()
+            {
+                {"red", 0},
+                {"green", 0},
+                {"blue", 0}
+            };
             foreach (KeyValuePair<string, int> entry in bag)
             {
                 string pattern = @"(\d+) " + entry.Key;
@@ -31,19 +40,26 @@ class Program
                 MatchCollection matches = rgx.Matches(line);
                 foreach (Match match in matches)
                 {
-                    if (Int32.Parse(match.Groups[1].Value) > entry.Value)
+                    int value = Int32.Parse(match.Groups[1].Value);
+                    if (value > entry.Value)
                     {
                         possible = false;
-                        break;
+                    }
+                    if (value > minimal_bag[entry.Key])
+                    {
+                        minimal_bag[entry.Key] = value;
                     }
                 }
             }
+            int power = minimal_bag.Values.Aggregate(1, (current, value) => current * value);
+            sum_of_powers += power;
             if (possible)
             {
                 sum += gameId;
             }
         }
-        Console.WriteLine(sum);
+        Console.WriteLine($"Solution 1: {sum}");
+        Console.WriteLine($"Solution 2: {sum_of_powers}");
     }
 
     static int ParseGameId(string line)
