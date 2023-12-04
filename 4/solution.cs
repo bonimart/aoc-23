@@ -13,18 +13,28 @@ class Program
 
         public int GetPoints()
         {
-            int points = 0;
+            int matching = GetMatching();
+            if (matching == 0)
+            {
+                return 0;
+            }
+            return 2 ^ (GetMatching() - 1);
+        }
+
+        public int GetMatching()
+        {
+            int matching = 0;
             foreach (int win in winning)
             {
                 foreach (int avail in available)
                 {
                     if (win == avail)
                     {
-                        points = points == 0 ? 1 : points * 2;
+                        matching++;
                     }
                 }
             }
-            return points;
+            return matching;
         }
     }
     static void Main()
@@ -33,14 +43,35 @@ class Program
 
         // Read all lines from the file into an array
         string[] lines = File.ReadAllLines(filePath);
+        Card[] cards = new Card[lines.Length];
 
         int sum = 0;
-        foreach (string line in lines)
+        for (int i = 0; i < lines.Length; ++i)
         {
+            string line = lines[i];
             Card card = ParseLine(line);
             sum += card.GetPoints();
+            cards[i] = card;
         }
+
         Console.WriteLine($"Solution 1: {sum}");
+
+        int scratchcard_sum = 0;
+        int[] card_counts = new int[lines.Length];
+        for (int i = 0; i < lines.Length; ++i)
+        {
+            Card card = cards[i];
+            card_counts[i]++;
+            int matching = card.GetMatching();
+            for (int j = 1; j <= matching; ++j)
+            {
+                card_counts[i+j] += card_counts[i];
+            }
+            scratchcard_sum += card_counts[i];
+        }
+
+        Console.WriteLine($"Solution 2: {scratchcard_sum}");
+
     }
 
     static Card ParseLine(string line)
