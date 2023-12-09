@@ -31,6 +31,14 @@ class Program
 
         Console.WriteLine($"Solution to the first part: {sum}");
 
+        BigInteger sumBackwards = 0;
+        foreach (List<BigInteger> sequence in sequences)
+        {
+            sumBackwards += Extrapolate(sequence, true);
+        }
+
+        Console.WriteLine($"Solution to the second part: {sumBackwards}");
+
     }
 
     static List<BigInteger> ParseLine(string line)
@@ -47,7 +55,7 @@ class Program
         return sequence;
     }
 
-    static BigInteger Extrapolate(List<BigInteger> sequence)
+    static BigInteger Extrapolate(List<BigInteger> sequence, bool backwards = false)
     {
         if (sequence.TrueForAll(x => x == 0))
         {
@@ -58,6 +66,11 @@ class Program
         for (int i = 1; i < sequence.Count; i++)
         {
             newSequence.Add(sequence[i] - sequence[i - 1]);
+        }
+
+        if (backwards)
+        {
+            return sequence[0] - Extrapolate(newSequence, true);
         }
 
         return Extrapolate(newSequence) + sequence[sequence.Count - 1];
