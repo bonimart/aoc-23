@@ -21,11 +21,38 @@ class Program
 
         for (int i = 0; i < lines.Length; ++i)
         {
-            int n = NumOfArrangements(rows[i], values[i]);
+            ulong n = NumOfArrangements(rows[i], values[i]);
             sum += n;
         }
 
         Console.WriteLine($"Solution of the first part: {sum}");
+
+        Unfold(rows, values);
+
+        sum = 0;
+        for (int i = 0; i < lines.Length; ++i)
+        {
+            ulong n = NumOfArrangements(rows[i], values[i]);
+            sum += n;
+        }
+
+        Console.WriteLine($"Solution of the second part: {sum}");
+    }
+
+    static void Unfold(string[] rows, List<int>[] values, int ratio=4)
+    {
+        for (int i = 0; i < rows.Length; ++i)
+        {
+            string row = rows[i];
+            List<int> value = values[i];
+            values[i] = new List<int>();
+            values[i].AddRange(value);
+            for (int j = 0; j < ratio; ++j)
+            {
+                rows[i] = rows[i] + "?" + row;
+                values[i].AddRange(value);
+            }
+        }
     }
 
     static void ParseInput(string[] lines, out string[] rows, out List<int>[] values)
@@ -46,14 +73,14 @@ class Program
         }
     }
 
-    static int NumOfArrangements(string row, List<int> toAssign)
+    static ulong NumOfArrangements(string row, List<int> toAssign)
     {
-        Dictionary<string, Dictionary<int, int>> memo = new Dictionary<string, Dictionary<int, int>>();
+        Dictionary<string, Dictionary<int, ulong>> memo = new Dictionary<string, Dictionary<int, ulong>>();
 
         return NumOfArrangementsRec(row, toAssign, memo);
     }
 
-    static int NumOfArrangementsRec(string row, List<int> toAssign, Dictionary<string, Dictionary<int, int>> memo)
+    static ulong NumOfArrangementsRec(string row, List<int> toAssign, Dictionary<string, Dictionary<int, ulong>> memo)
     {
         if (memo.ContainsKey(row) && memo[row].ContainsKey(toAssign.Count()))
         {
@@ -70,47 +97,51 @@ class Program
             return 0;
         }
         int index;
-        int result;
-        if (row.Contains("?"))
-        {
-           index = row.IndexOf("?"); 
-           string withDot = row.Substring(0, index) + "." + row.Substring(index + 1);
-           string withHash = row.Substring(0, index) + "#" + row.Substring(index + 1);
-           result = NumOfArrangementsRec(withDot, toAssign, memo) + NumOfArrangementsRec(withHash, toAssign, memo);
-           if (!memo.ContainsKey(row))
-           {
-               memo.Add(row, new Dictionary<int, int>());
-           }
-           memo[row][toAssign.Count()] = result;
-           return result;
-        }
         int assigned = toAssign[0];
-        index = row.IndexOf("#");
-        if (index == -1 || index + assigned > row.Length)
+        index = row.IndexOf("#") == -1 ? row.Length : row.IndexOf("#");
+        int indexQuestion = row.IndexOf("?") == -1 ? row.Length : row.IndexOf("?");
+        index = Math.Min(index, indexQuestion);
+        if (index == row.Length)
         {
             if (!memo.ContainsKey(row))
             {
-                memo.Add(row, new Dictionary<int, int>());
+                memo.Add(row, new Dictionary<int, ulong>());
             }
             memo[row][toAssign.Count()] = 0;
             return 0;
+        }
+
+        ulong result = 0;
+        if (row[index] == '?')
+        {
+            result =  NumOfArrangementsRec(row.Substring(index + 1), toAssign, memo);
+        }
+
+        if (index + assigned > row.Length)
+        {
+            if (!memo.ContainsKey(row))
+            {
+                memo.Add(row, new Dictionary<int, ulong>());
+            }
+            memo[row][toAssign.Count()] = result;
+            return result;
         }
         string s = row.Substring(index, assigned);
         if (s.Contains(".") || (row.Length > index + assigned && row[index + assigned] == '#'))
         {
             if (!memo.ContainsKey(row))
             {
-                memo.Add(row, new Dictionary<int, int>());
+                memo.Add(row, new Dictionary<int, ulong>());
             }
-            memo[row][toAssign.Count()] = 0;
-            return 0;
+            memo[row][toAssign.Count()] = result;
+            return result;
         }
         string newRow = index + assigned + 1 >= row.Length ? "" : row.Substring(index + assigned + 1);
         List<int> newToAssign = toAssign.Skip(1).ToList();
-        result = NumOfArrangementsRec(newRow, newToAssign, memo);
+        result += NumOfArrangementsRec(newRow, newToAssign, memo);
         if (!memo.ContainsKey(row))
         {
-            memo.Add(row, new Dictionary<int, int>());
+            memo.Add(row, new Dictionary<int, ulong>());
         }
         memo[row][toAssign.Count()] = result;
         return result;
