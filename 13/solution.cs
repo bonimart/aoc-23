@@ -16,29 +16,38 @@ class Program
         List<string[]> patterns = new List<string[]>();
         ParseInput(lines, out patterns);
 
+        int sum = countReflections(patterns);
+
+        Console.WriteLine($"Solution of the first part: {sum}");
+
+        sum = countReflections(patterns, 1);
+
+        Console.WriteLine($"Solution of the second part: {sum}");
+
+    }
+
+    static int countReflections(List<string[]> patterns, int smudges=0)
+    {
         int sum = 0;
-        Console.WriteLine($"Number of patterns: {patterns.Count}");
         foreach (string[] pattern in patterns)
         {
-            int reflection = findReflection(pattern);
+            int reflection = findReflection(pattern, smudges: smudges);
             if (reflection != -1)
             {
                 sum += reflection;
                 continue;
             }
-            reflection = findReflection(pattern, false);
+            reflection = findReflection(pattern, false, smudges:smudges);
             if (reflection != -1)
             {
                 sum += reflection;
                 continue;
             }
         }
-
-        Console.WriteLine($"Solution of the first part: {sum}");
-
+        return sum;
     }
 
-    static int findReflection(string[] pattern, bool vertical=true, int horizontal_multiplier=100)
+    static int findReflection(string[] pattern, bool vertical=true, int horizontal_multiplier=100, int smudges=0)
     {
         Dictionary<int, HashSet<int>> same = new Dictionary<int, HashSet<int>>();
         // index, where the axes of reflection moves
@@ -50,7 +59,7 @@ class Program
         for (int i = 1; i < width; ++i)
         {
             //check reflections if mirror is placed at i
-            if (canReflect(pattern, i, vertical, same))
+            if (canReflect(pattern, i, vertical, same, smudges))
             {
                 // because of notation
                 return vertical ? i : i * horizontal_multiplier;
@@ -59,15 +68,17 @@ class Program
         return -1;
     }
 
-    static bool canReflect(string[] pattern, int index, bool vertical, Dictionary<int, HashSet<int>> same)
+    static bool canReflect(string[] pattern, int index, bool vertical, Dictionary<int, HashSet<int>> same, int smudges)
     {
         int height = vertical ? pattern.Length : pattern[0].Length;
         int width = vertical ? pattern[0].Length : pattern.Length;
         int axis_range = Math.Min(index, width - index);
+        int smudge_count = 0;
         for(int i = 0; i < axis_range; ++i)
         {
             int former = index - i - 1;
             int image = index + i;
+            int temp_smudge_count = 0;
             foreach (int j in same[former])
             {
                 if (same[image].Contains(j))
@@ -89,18 +100,22 @@ class Program
                 if (vertical)
                 {
                     if (pattern[j][former] != pattern[j][image])
-                    {
-                        return false;
-                    }
-                    continue;
+                        temp_smudge_count++;
                 }
-                if (pattern[former][j] != pattern[image][j])
+                else
                 {
-                    return false;
+                    if (pattern[former][j] != pattern[image][j])
+                        temp_smudge_count++;
                 }
+                if (temp_smudge_count > smudges)
+                    return false;
             }
-            makeSame(same, former, image);
+            smudge_count += temp_smudge_count;
+            if (temp_smudge_count == 0)
+                makeSame(same, former, image);
         }
+        if (smudge_count != smudges)
+            return false;
         return true;
     }
 
