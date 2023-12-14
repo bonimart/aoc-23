@@ -163,6 +163,30 @@ class Program
             }
             return sum;
         }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+                return false;
+            Board b = obj as Board;
+            if (b == null)
+                return false;
+            return round_rocks.SetEquals(b.round_rocks);
+        }
+
+        public override int GetHashCode()
+        {
+            return round_rocks.GetHashCode();
+        }
+    }
+
+    static Board RollCycle(Board board)
+    {
+        Board tmp = board.Roll(Direction.N);
+        tmp = tmp.Roll(Direction.W);
+        tmp = tmp.Roll(Direction.S);
+        tmp = tmp.Roll(Direction.E);
+        return tmp;
     }
 
     public static void Main()
@@ -177,7 +201,32 @@ class Program
         int load = rolled_north.CalculateLoad(Direction.N);
         Console.WriteLine($"Solution of the first part: {load}");
 
+        int cycles = 1000000000;
+        Dictionary<Board, int> seen = new Dictionary<Board, int>();
+        int period = 0;
+        Board rolled = board;
+        for (int i = 0; i < cycles; ++i)
+        {
+            seen.Add(rolled, i);
+            Board tmp = RollCycle(rolled);
+            if (seen.ContainsKey(tmp))
+            {
+                rolled = tmp;
+                period = i - seen[tmp] + 1;
+                break;
+            }
+            rolled = tmp;
+        }
 
+        int remaining = (cycles - seen[rolled]) % period;
+        for (int i = 0; i < remaining; ++i)
+        {
+            rolled = RollCycle(rolled);
+        }
+
+        load = rolled.CalculateLoad(Direction.N);
+
+        Console.WriteLine($"Solution of the second part: {load}");
     }
 
 }
