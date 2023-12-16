@@ -253,7 +253,7 @@ class Program
 
     public static void Main()
     {
-        string filePath = "test";
+        string filePath = "input";
 
         string[] lines = File.ReadAllLines(filePath);
         Contraption contraption = new Contraption(lines);
@@ -261,6 +261,10 @@ class Program
         int result = contraption.Energize(beam);
 
         Console.WriteLine($"Solution to the first part: {result}");
+
+        result = contraption.MaxEnergy();
+
+        Console.WriteLine($"Solution to the second part: {result}");
 
     }
 
