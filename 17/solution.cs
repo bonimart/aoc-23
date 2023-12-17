@@ -9,27 +9,44 @@ using System.Numerics;
 class Program
 {
     const int MAX_STRAIGHT = 3;
+    const int MAX_STRAIGHT_ULTRA = 10;
+    const int MIN_STRAIGHT_ULTRA = 4;
     
     struct Crucible
     {
         public Vector2 position;
         public Vector2 direction;
         int StraightCount;
+        bool ultra;
 
-        public Crucible(Vector2 position, Vector2 direction)
+        public Crucible(Vector2 position, Vector2 direction, bool ultra=false)
         {
             this.position = position;
             this.direction = direction;
             this.StraightCount = 0;
+            this.ultra = ultra;
         }
-        public Crucible(Vector2 position, Vector2 direction, int StraightCount)
+        public Crucible(Vector2 position, Vector2 direction, int StraightCount, bool ultra=false)
         {
             this.position = position;
             this.direction = direction;
             this.StraightCount = StraightCount;
+            this.ultra = ultra;
         }
             
         public List<Crucible> GetNext()
+        {
+            if (ultra)
+            {
+                return GetNextUltra();
+            }
+            else
+            {
+                return GetNextNormal();
+            }
+        }
+
+        List<Crucible> GetNextNormal()
         {
             List<Crucible> crucibles = new List<Crucible>();
             if (StraightCount < MAX_STRAIGHT)
@@ -42,6 +59,25 @@ class Program
             Crucible right = new Crucible(position + rightDirection, rightDirection, 1);
             crucibles.Add(left);
             crucibles.Add(right);
+            return crucibles;
+        }
+
+        List<Crucible> GetNextUltra()
+        {
+            List<Crucible> crucibles = new List<Crucible>();
+            if (StraightCount < MAX_STRAIGHT_ULTRA)
+            {
+                crucibles.Add(new Crucible(position + direction, direction, StraightCount + 1, true));
+            } 
+            if (StraightCount >= MIN_STRAIGHT_ULTRA)
+            {
+                Vector2 leftDirection = new Vector2(direction.Y, -direction.X);
+                Crucible left = new Crucible(position + leftDirection, leftDirection, 1, true);
+                Vector2 rightDirection = new Vector2(-direction.Y, direction.X);
+                Crucible right = new Crucible(position + rightDirection, rightDirection, 1, true);
+                crucibles.Add(left);
+                crucibles.Add(right);
+            }
             return crucibles;
         }
     }
@@ -70,13 +106,14 @@ class Program
         {
             HashSet<Crucible> seen = new HashSet<Crucible>();
             PriorityQueue<Crucible, int> queue = new PriorityQueue<Crucible, int>();
-            queue.Enqueue(from, 0);
-            // djikstra
+            Dictionary<Vector2, int> heuristic = Heuristic(to);
+            queue.Enqueue(from, heuristic[from.position]);
             while (queue.Count > 0)
             {
-                int distance;
+                int priority;
                 Crucible crucible;
-                queue.TryDequeue(out crucible, out distance);
+                queue.TryDequeue(out crucible, out priority);
+                int distance = priority - heuristic[crucible.position];
                 if (seen.Contains(crucible))
                 {
                     continue;
@@ -94,10 +131,42 @@ class Program
                         return distance + grid[(int)next.position.X, (int)next.position.Y];
                     }
                     int nextDistance = distance + grid[(int)next.position.X, (int)next.position.Y];
-                    queue.Enqueue(next, nextDistance);
+                    queue.Enqueue(next, nextDistance + heuristic[next.position]);
                 }
             }
             return -1;
+        }
+
+        Dictionary<Vector2, int> Heuristic(Vector2 to)
+        {
+            Dictionary<Vector2, int> heuristic = new Dictionary<Vector2, int>();
+            HeuristicRec(new Vector2(0, 0), to, heuristic);
+            return heuristic;
+        }
+
+        int HeuristicRec(Vector2 position, Vector2 to, Dictionary<Vector2, int> map)
+        {
+            if (map.ContainsKey(position))
+            {
+                return map[position];
+            }
+            if (position == to)
+            {
+                map[position] = grid[(int)position.X, (int)position.Y];
+                return map[position];
+            }
+            if (position.X < 0 || position.X >= width ||
+                    position.Y < 0 || position.Y >= height)
+            {
+                return int.MaxValue;
+            }
+            int output = Math.Min(
+                    HeuristicRec(position + new Vector2(1, 0), to, map),
+                    HeuristicRec(position + new Vector2(0, 1), to, map)
+                    );
+            output += grid[(int)position.X, (int)position.Y];
+            map[position] = output;
+            return output;
         }
 
     }
@@ -113,6 +182,11 @@ class Program
         int shortestPath = puzzle.ShortestPath(from, new Vector2(puzzle.width - 1, puzzle.height - 1));
 
         Console.WriteLine($"Solution to the first part: {shortestPath}");
+
+        from = new Crucible(new Vector2(0, 0), new Vector2(1, 0), true);
+        shortestPath = puzzle.ShortestPath(from, new Vector2(puzzle.width - 1, puzzle.height - 1));
+
+        Console.WriteLine($"Solution to the second part: {shortestPath}");
     }
 
 }
