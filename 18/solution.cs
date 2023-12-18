@@ -9,10 +9,10 @@ class Program
 {
     struct Vec2
     {
-        public int X;
-        public int Y;
+        public long X;
+        public long Y;
 
-        public Vec2(int X, int Y)
+        public Vec2(long X, long Y)
         {
             this.X = X;
             this.Y = Y;
@@ -27,6 +27,11 @@ class Program
         {
             return new Vec2(a.X + b.X, a.Y + b.Y);
         }
+
+        public static Vec2 operator *(Vec2 a, long b)
+        {
+            return new Vec2(a.X * b, a.Y * b);
+        }
     }
 
     static readonly Dictionary<char, Vec2> directions = new Dictionary<char, Vec2>()
@@ -37,114 +42,79 @@ class Program
         { 'R', new Vec2(1, 0) }
     };
 
+    static readonly Dictionary<char, char> colors = new Dictionary<char, char>()
+    {
+        { '3', 'U'},
+        { '1', 'D'},
+        { '2', 'L'},
+        { '0', 'R'}
+    };
+
     class Excavation
     {
-        Vec2 min, max;
         Vec2 digger;
-        HashSet<Vec2> dug;
+        List<Vec2> dug;
 
         public Excavation()
         {
-            min = new Vec2(0, 0);
-            max = new Vec2(0, 0);
             digger = new Vec2(0, 0);
-            dug = new HashSet<Vec2>();
+            dug = new List<Vec2>();
             dug.Add(digger);
         }
 
-        public void Commands(string[] commands)
+        public void Commands(string[] commands, bool fromColor = false)
         {
             foreach (string command in commands)
-                Command(command);
+                Command(command, fromColor);
         }
 
-        public void Command(string command)
+        public void Command(string command, bool fromColor = false)
         {
             Vec2 direction;
-            int distance;
-            Parse(command, out direction, out distance);
+            long distance;
+            if (fromColor)
+                ParseColor(command, out direction, out distance);
+            else
+                Parse(command, out direction, out distance);
             Dig(direction, distance);
         }
 
-        void Parse(string command, out Vec2 direction, out int distance)
+        void Parse(string command, out Vec2 direction, out long distance)
         {
             string[] parts = command.Split(' ');
             direction = directions[parts[0][0]];
-            distance = int.Parse(parts[1]);
+            distance = long.Parse(parts[1]);
         }
 
-        void Dig(Vec2 direction, int distance)
+        void ParseColor(string command, out Vec2 direction, out long distance)
         {
-            for (int i = 0; i < distance; i++)
-            {
-                digger += direction;
-                min = new Vec2( 
-                        Math.Min(min.X, digger.X),
-                        Math.Min(min.Y, digger.Y));
-                max = new Vec2(
-                    Math.Max(max.X, digger.X),
-                    Math.Max(max.Y, digger.Y));
-                dug.Add(digger);
-            }
+            string[] parts = command.Split(' ');
+            string part = parts[2];
+            string color = part.Substring(2, part.Length - 3);
+            distance = Convert.ToInt64(color.Substring(0, color.Length - 1), 16);
+            direction = directions[colors[color[color.Length - 1]]];
         }
 
-        public int DigOutInterior()
+        void Dig(Vec2 direction, long distance)
         {
-            HashSet<Vec2> left = new HashSet<Vec2>();
-            for (int y = min.Y; y <= max.Y; ++y)
-            {
-                DigOutBlock(new Vec2(min.X, y), left);
-                DigOutBlock(new Vec2(max.X, y), left);
-            }
-            for (int x = min.X; x <= max.X; ++x)
-            {
-                DigOutBlock(new Vec2(x, min.Y), left);
-                DigOutBlock(new Vec2(x, max.Y), left);
-            }
-            return (Math.Abs(max.X - min.X) + 1) * (Math.Abs(max.Y - min.Y) + 1) - left.Count;
+            digger = digger + direction * distance;
+            dug.Add(digger);
         }
 
-        void DigOutBlock(Vec2 position, HashSet<Vec2> seen)
+        public BigInteger DigOutInterior()
         {
-            Queue<Vec2> queue = new Queue<Vec2>();
-            queue.Enqueue(position);
-            while (queue.Count > 0)
+            BigInteger result = 0;
+            for (int i = 0; i < dug.Count - 1; i++)
             {
-                Vec2 current = queue.Dequeue();
-                if (seen.Contains(current) || dug.Contains(current))
-                    continue;
-                seen.Add(current);
-                foreach (Vec2 direction in directions.Values)
-                {
-                    Vec2 next = current + direction;
-                    if (InBorders(next))
-                        queue.Enqueue(next);
-                }
+                Vec2 a = dug[i];
+                Vec2 b = dug[i + 1];
+                result += a.X * b.Y - a.Y * b.X;
+                result += Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
             }
-
+            result += 2;
+            return result / 2;
         }
-
-        bool InBorders(Vec2 position)
-        {
-            return position.X >= min.X && position.X <= max.X
-                && position.Y >= min.Y && position.Y <= max.Y;
-        }
-
-        public void Print()
-        {
-            Console.WriteLine($"min: {min.X}, {min.Y}");
-            Console.WriteLine($"max: {max.X}, {max.Y}");
-            for (int y = min.Y; y <= max.Y; ++y)
-            {
-                for (int x = min.X; x <= max.X; ++x)
-                {
-                    char c = dug.Contains(new Vec2(x, y)) ? '#' : '.';
-                    Console.Write(c);
-                }
-                Console.WriteLine();
-            }
-        }
-    }
+    } 
 
     public static void Main()
     {
@@ -154,9 +124,14 @@ class Program
 
         Excavation excavation = new Excavation();
         excavation.Commands(lines);
-        int result = excavation.DigOutInterior();
+        BigInteger result = excavation.DigOutInterior();
         Console.WriteLine($"Solution to the first part: {result}");
 
+
+        excavation = new Excavation();
+        excavation.Commands(lines, true);
+        result = excavation.DigOutInterior();
+        Console.WriteLine($"Solution to the second part: {result}");
     }
 }
 
