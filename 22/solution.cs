@@ -137,6 +137,12 @@ class Program
         }
     }
 
+    struct State
+    {
+        public int seen;
+        public int neededToFall;
+    }
+
     class Stack
     {
         Dictionary<int, List<Brick>> layers;
@@ -231,9 +237,61 @@ class Program
             }
             return disintegrable;
         }
+
+        public int causesToFall(Brick brick)
+        {
+            int causesToFall = 0;
+            Dictionary<Brick, State> table = new Dictionary<Brick, State>();
+            Queue<Brick> queue = new Queue<Brick>();
+            foreach (Brick other in brick.supporting)
+            {
+                queue.Enqueue(other);
+            }
+            while (queue.Count > 0)
+            {
+                Brick current = queue.Dequeue();
+                if (!table.ContainsKey(current))
+                {
+                    table[current] = new State()
+                    {
+                        seen = 1,
+                        neededToFall = current.supportedBy.Count
+                    };
+                }
+                else
+                {
+                    table[current] = new State()
+                    {
+                        seen = table[current].seen + 1,
+                        neededToFall = table[current].neededToFall
+                    };
+                }
+                if (table[current].seen != table[current].neededToFall)
+                {
+                    continue;
+                }
+                causesToFall++;
+                foreach (Brick other in current.supporting)
+                {
+                    queue.Enqueue(other);
+                }
+            }
+            return causesToFall;
+        }
+
+        public int totalCausesToFall()
+        {
+            int totalCausesToFall = 0;
+            foreach (Brick brick in bricks)
+            {
+                totalCausesToFall += causesToFall(brick);
+            }
+            return totalCausesToFall;
+        }
     }
 
-    static int Run(string filename)
+
+    static int Run(string filename, bool part2 = false)
     {
         string[] lines = File.ReadAllLines(filename);
         List<Brick> bricks = new List<Brick>();
@@ -242,7 +300,11 @@ class Program
             bricks.Add(ParseBrick(line));
         }
         Stack stack = new Stack(bricks);
-        return stack.Disintegrable();
+        if (!part2)
+        {
+            return stack.Disintegrable();
+        }
+        return stack.totalCausesToFall();
     }
 
     static Brick ParseBrick(string line)
@@ -267,9 +329,20 @@ class Program
             throw new Exception($"Expected {p1} for test, got {result}");
         }
 
+        int p2 = 7;
+        result = Run("test", true);
+        if (result != p2)
+        {
+            throw new Exception($"Expected {p2} for test, got {result}");
+        }
+
         result = Run("input");
 
-        Console.WriteLine($"Solution to the first part is {result}");
+        Console.WriteLine($"Solution to the first part: {result}");
+
+        result = Run("input", true);
+
+        Console.WriteLine($"Solution to the second part: {result}");
     }
 }
 
