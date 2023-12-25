@@ -127,9 +127,21 @@ class Program
 
     class Map 
     {
+        struct Neighbour 
+        {
+            public Tile tile;
+            public int distance;
+            public Neighbour(Tile tile, int distance)
+            {
+                this.tile = tile;
+                this.distance = distance;
+            }
+        }
+
         Tile[,] Tiles;
         HashSet<Tile> Visitable;
         int Width, Height;
+        Dictionary<Tile, List<Neighbour>> Neighbours = new Dictionary<Tile, List<Neighbour>>();
 
         public Map(Tile[,] tiles)
         {
@@ -148,6 +160,7 @@ class Program
 
                 }
             }
+            Simplify();
         }
 
         Tile Start()
@@ -179,35 +192,36 @@ class Program
             Tile start = Start();
             Tile end = End();
             HashSet<Tile> visited = new HashSet<Tile>();
-            return LongestPathRec(start, end, visited);
+            return LongestPathRec(start, end, visited) - 1;
         }
 
-        public int LongestPathRec(Tile start, Tile end, HashSet<Tile> visited)
+        int LongestPathRec(Tile start, Tile end, HashSet<Tile> visited)
         {
             if (start == end)
             {
                 return 0;
             }
-            int longest = 0;
+            int longest = Int32.MinValue;
             visited.Add(start);
-            foreach (Tile neighbour in neighbours(start))
+            foreach (Neighbour neighbour in Neighbours[start])
             {
-                if (visited.Contains(neighbour))
+                Tile tile = neighbour.tile;
+                if (visited.Contains(tile))
                 {
                     continue;
                 }
-                visited.Add(neighbour);
-                int length = LongestPathRec(neighbour, end, visited);
+                visited.Add(tile);
+                int length = LongestPathRec(tile, end, visited) + neighbour.distance;
                 if (length > longest)
                 {
                     longest = length;
                 }
-                visited.Remove(neighbour);
+                visited.Remove(tile);
             }
-            return longest + 1;
+            return longest;
         }
 
-        List<Tile> neighbours(Tile tile)
+        List<Tile> directNeighbours(Tile tile)
         {
             List<Tile> neighbours = new List<Tile>();
             List<Vec2> positions = tile.Neighbours();
@@ -225,6 +239,73 @@ class Program
             }
             return neighbours;
         }
+
+        void Simplify()
+        {
+            foreach (Tile tile in Visitable)
+            {
+                List<Tile> neighbours = directNeighbours(tile); 
+                if (neighbours.Count == 2)
+                {
+                    continue;
+                }
+                Neighbours[tile] = new List<Neighbour>();
+                foreach (Tile neighbour in neighbours)
+                {
+                    Neighbour n = FindNeighbour(tile, neighbour);
+                    Neighbours[tile].Add(n);
+                }
+            }
+        }
+
+        Neighbour FindNeighbour(Tile source, Tile n)
+        {
+            Tile last = n;
+            int distance = 1;
+            HashSet<Tile> visited = new HashSet<Tile>();
+            visited.Add(source);
+            while(directNeighbours(last).Count <= 2 && !visited.Contains(last))
+            {
+                distance++;
+                visited.Add(last);
+                List<Tile> next = directNeighbours(last)
+                    .Where(tile => !visited.Contains(tile))
+                    .ToList();
+                foreach (Tile tile in next)
+                {
+                    last = tile;
+                }
+            }
+            return new Neighbour(last, distance);
+        }
+
+        void Print()
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                string line = "";
+                for (int x = 0; x < Width; x++)
+                {
+                    if (Neighbours.Keys.Contains(Tiles[x, y]))
+                    {
+                        line += $"{Neighbours[Tiles[x, y]].Count}";
+                    }
+                    else if (Tiles[x, y] is Path)
+                    {
+                        line += ".";
+                    }
+                    else if (Tiles[x, y] is Slope)
+                    {
+                        line += "^";
+                    }
+                    else
+                    {
+                        line += "#";
+                    }
+                }
+                Console.WriteLine(line);
+            }
+        }
     }
 
     const char FOREST = '#';
@@ -237,7 +318,7 @@ class Program
         { '>', new Vec2(1, 0) }
     };
 
-    static Map Parse(string[] lines)
+    static Map Parse(string[] lines, bool part2 = false)
     {
         int width = lines[0].Length;
         int height = lines.Length;
@@ -255,6 +336,11 @@ class Program
                         tiles[x, y] = new Path(new Vec2(x, y));
                         break;
                     default:
+                        if (part2)
+                        {
+                            tiles[x, y] = new Path(new Vec2(x, y));
+                            break;
+                        }
                         char slope = lines[y][x];
                         tiles[x, y] = new Slope(new Vec2(x, y), SLOPES[slope]);
                         break;
@@ -264,16 +350,23 @@ class Program
         return new Map(tiles);
     }
 
-    static int Run(string filename)
+    static int Run(string filename, bool part2 = false)
     {
         string[] lines = File.ReadAllLines(filename);
-        Map map = Parse(lines);
+        Map map = Parse(lines, part2);
         return map.LongestPath();
     }
 
     public static void Main()
     {
         BigInteger result;
+
+        var P1T2 = 3;
+        result = Run("test2");
+        if (result != P1T2)
+        {
+            throw new Exception($"Part 1, test failed, expected {P1T2}, got {result}");
+        }
 
         var P1 = 94;
         result = Run("test");
@@ -285,6 +378,17 @@ class Program
         // part 1
         result = Run("input");
         Console.WriteLine($"Part 1: {result}");
+
+        var P2 = 154;
+        result = Run("test", true);
+        if (result != P2)
+        {
+            throw new Exception($"Part 2, test failed, expected {P2}, got {result}");
+        }
+
+        // part 2
+        result = Run("input", true);
+        Console.WriteLine($"Part 2: {result}");
     }
 }
 
